@@ -247,6 +247,10 @@ UpgradeLog*.htm
 *.mdf
 *.ldf
 
+**/.idea/*
+
+.DS_Store
+
 # Business Intelligence projects
 *.rdl.data
 *.bim.layout

@@ -1,0 +1,48 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Generate Stringified Payload",
+  "States": {
+    "Generate Stringified Payload": {
+      "Type": "Pass",
+      "Next": "ECS RunTask",
+      "Parameters": {
+        "Data.$": "States.JsonToString($)"
+      }
+    },
+    "ECS RunTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::ecs:runTask",
+      "Parameters": {
+        "LaunchType": "FARGATE",
+        "Cluster": "${CLUSTER_NAME}",
+        "TaskDefinition": "${TASK_DEFINITION}",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": [
+              "${SUBNET_1}",
+              "${SUBNET_2}"
+            ],
+            "SecurityGroups": [
+              "${SECURITY_GROUP_ID}"
+            ],
+            "AssignPublicIp": "ENABLED"
+          }
+        },
+        "Overrides": {
+          "ContainerOverrides": [
+            {
+              "Name": "SampleContainer",
+              "Environment": [
+                {
+                  "Name": "INPUT_MESSAGE",
+                  "Value.$": "$.Data"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "End": true
+    }
+  }
+}
