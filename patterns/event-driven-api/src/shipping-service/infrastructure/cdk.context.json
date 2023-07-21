@@ -1,0 +1,46 @@
+{
+  "vpc-provider:account=521936459218:filter.isDefault=false:filter.tag:Name=copilot-shipping-service-dev:region=eu-west-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-05277bd3484eb4716",
+    "vpcCidrBlock": "10.0.0.0/16",
+    "ownerAccountId": "521936459218",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Isolated",
+        "type": "Isolated",
+        "subnets": [
+          {
+            "subnetId": "subnet-06494df5d80a69f76",
+            "cidr": "10.0.2.0/24",
+            "availabilityZone": "eu-west-1a",
+            "routeTableId": "rtb-0b8f7cbab4ad1ecd4"
+          },
+          {
+            "subnetId": "subnet-05007151a8745d74d",
+            "cidr": "10.0.3.0/24",
+            "availabilityZone": "eu-west-1b",
+            "routeTableId": "rtb-0b8f7cbab4ad1ecd4"
+          }
+        ]
+      },
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-097ff6d8b0ae77a14",
+            "cidr": "10.0.0.0/24",
+            "availabilityZone": "eu-west-1a",
+            "routeTableId": "rtb-0893d1c8314ec7bd8"
+          },
+          {
+            "subnetId": "subnet-08827836d3ee99fbe",
+            "cidr": "10.0.1.0/24",
+            "availabilityZone": "eu-west-1b",
+            "routeTableId": "rtb-0893d1c8314ec7bd8"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShippingService.EventReceiver", "ShippingService.EventReceiver\ShippingService.EventReceiver.csproj", "{28ACFC7F-0807-4142-BC43-11ED19057161}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "infrastructure\src\Infrastructure\Infrastructure.csproj", "{D0418FD3-5BE0-4F38-9A7B-CCAED8D047D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LambdaProxyHandler", "infrastructure\src\Infrastructure\Constructs\LambdaProxyHandler\LambdaProxyHandler.csproj", "{817DE827-06D2-4C4A-9BFD-C16CA7A099DA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{28ACFC7F-0807-4142-BC43-11ED19057161}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28ACFC7F-0807-4142-BC43-11ED19057161}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28ACFC7F-0807-4142-BC43-11ED19057161}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28ACFC7F-0807-4142-BC43-11ED19057161}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0418FD3-5BE0-4F38-9A7B-CCAED8D047D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0418FD3-5BE0-4F38-9A7B-CCAED8D047D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0418FD3-5BE0-4F38-9A7B-CCAED8D047D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0418FD3-5BE0-4F38-9A7B-CCAED8D047D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{817DE827-06D2-4C4A-9BFD-C16CA7A099DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{817DE827-06D2-4C4A-9BFD-C16CA7A099DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{817DE827-06D2-4C4A-9BFD-C16CA7A099DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{817DE827-06D2-4C4A-9BFD-C16CA7A099DA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
