@@ -1,0 +1,68 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Generate Stringified Payload",
+  "States": {
+    "Generate Stringified Payload": {
+      "Type": "Pass",
+      "Next": "ECS RunTask",
+      "Parameters": {
+        "Data.$": "States.JsonToString($)"
+      }
+    },
+    "ECS RunTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:ecs:runTask.waitForTaskToken",
+      "Parameters": {
+        "LaunchType": "FARGATE",
+        "Cluster": "${CLUSTER_NAME}",
+        "TaskDefinition": "${TASK_DEFINITION}",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": [
+              "${SUBNET_1}",
+              "${SUBNET_2}"
+            ],
+            "SecurityGroups": [
+              "${SECURITY_GROUP_ID}"
+            ],
+            "AssignPublicIp": "ENABLED"
+          }
+        },
+        "Overrides": {
+          "ContainerOverrides": [
+            {
+              "Name": "SampleContainer",
+              "Environment": [
+                {
+                  "Name": "INPUT_MESSAGE",
+                  "Value.$": "$.Data"
+                },
+                {
+                  "Name": "TASK_TOKEN",
+                  "Value.$": "$$.Task.Token"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "ProcessingException"
+          ],
+          "Next": "Handle Failure"
+        }
+      ],
+      "ResultPath": "$.processingResult",
+      "End": true
+    },
+    "Handle Failure": {
+      "Type": "Pass",
+      "Next": "Fail"
+    },
+    "Fail": {
+      "Type": "Fail"
+    }
+  }
+}

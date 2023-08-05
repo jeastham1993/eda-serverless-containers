@@ -1,0 +1,1 @@
+internal record ProcessingResult(bool IsSuccess, string Message);
