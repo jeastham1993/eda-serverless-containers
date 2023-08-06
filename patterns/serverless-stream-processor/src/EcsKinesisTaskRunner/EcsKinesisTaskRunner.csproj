@@ -21,6 +21,9 @@
     <None Update="statemachine\statemachine.asl.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="transformers\kinesis-input-transformer.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

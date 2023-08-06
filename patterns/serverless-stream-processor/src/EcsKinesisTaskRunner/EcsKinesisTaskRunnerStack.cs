@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.ECS;
@@ -9,6 +10,7 @@ using Amazon.CDK.AWS.Pipes;
 using Amazon.CDK.AWS.StepFunctions;
 using Constructs;
 using AssetOptions = Amazon.CDK.AWS.S3.Assets.AssetOptions;
+using Stream = Amazon.CDK.AWS.Kinesis.Stream;
 
 namespace EcsKinesisTaskRunner;
 
@@ -135,13 +137,13 @@ public class EcsKinesisTaskRunnerStack : Stack
                     KinesisStreamParameters = new CfnPipe.PipeSourceKinesisStreamParametersProperty
                     {
                         StartingPosition = "LATEST",
-                        BatchSize = 10,
-                        MaximumBatchingWindowInSeconds = 30
+                        BatchSize = 1,
                     }
                 },
                 Target = workflow.StateMachineArn,
                 TargetParameters = new CfnPipe.PipeTargetParametersProperty
                 {
+                    InputTemplate = File.ReadAllText("./src/EcsKinesisTaskRunner/transformers/kinesis-input-transformer.json"),
                     StepFunctionStateMachineParameters = new CfnPipe.PipeTargetStateMachineParametersProperty
                     {
                         InvocationType = "FIRE_AND_FORGET"

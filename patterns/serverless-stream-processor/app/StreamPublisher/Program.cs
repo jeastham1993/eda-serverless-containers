@@ -13,26 +13,36 @@ using Honeycomb.OpenTelemetry;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using StreamPublisher;
 
 var apiKey = new Option<string>(name: "--apikey", description: "Your Honeycomb API Key");
 var message = new Option<string>(name: "--message", description: "The message to publish");
+var streamName = new Option<string>(name: "--stream-name", description: "The name of the stream to publish to");
+var messagesToPublish = new Option<int>(name: "--number-to-publish", description: "The number of messages to publish");
 
 var rootCommand = new RootCommand("Kinesis Data Stream Publisher");
 rootCommand.AddOption(apiKey);
 rootCommand.AddOption(message);
+rootCommand.AddOption(streamName);
+rootCommand.Add(messagesToPublish);
 
-rootCommand.SetHandler(async (apiKey, message) =>
+rootCommand.SetHandler(async (apiKey, message, streamName, messagesToPublish) =>
 {
-    await PublishMessage(apiKey, message);
-}, apiKey, message);
+    await PublishMessage(apiKey, message, streamName, messagesToPublish);
+}, apiKey, message, streamName, messagesToPublish);
 
 await rootCommand.InvokeAsync(args);
 
-static async Task PublishMessage(string apiKey, string message)
+static async Task PublishMessage(string apiKey, string message, string streamName, int messagesToPublish)
 {
     if (string.IsNullOrEmpty(apiKey))
     {
         throw new ArgumentException("Honeycomb API cannot be null", nameof(apiKey));
+    }
+
+    if (string.IsNullOrEmpty(streamName))
+    {
+        throw new ArgumentException("Stream name cannot be null");
     }
     
     var applicationName = "com.JamesEastham.StreamPublisher";
@@ -67,21 +77,27 @@ static async Task PublishMessage(string apiKey, string message)
                 message = Console.ReadLine();    
             }
 
-            using (var activity = publisherActivitySource.StartActivity("Publishing Message"))
+            using (var activity = publisherActivitySource.StartActivity("Processing messages"))
             {
-                var messageJson = JsonSerializer.Serialize(new KinesisDataMessage(message, activity.TraceId.ToString(), activity.SpanId.ToString()));
-
-                var pushResponse = await client.PutRecordAsync(new PutRecordRequest
+                for (var counter = 1; counter <= messagesToPublish; counter++)
                 {
-                    Data = new MemoryStream(Encoding.UTF8.GetBytes(messageJson)),
-                    StreamName = "EcsKinesisTaskRunner-MessageStreamA82FF37E-ClDSgmqCtxZc",
-                    PartitionKey = "default"
-                });
+                    using var publishingActivity = publisherActivitySource.StartActivity("Publishing message");
+
+                    publishingActivity.AddTag("customer.id", $"customer-{counter}");
+                    
+                    var messageJson = JsonSerializer.Serialize(new MessageWrapper<CustomerCreatedEvent>(
+                        new CustomerCreatedEvent() { FirstName = message, CustomerId = $"customer-{counter}" }));
+
+                    var pushResponse = await client.PutRecordAsync(new PutRecordRequest
+                    {
+                        Data = new MemoryStream(Encoding.UTF8.GetBytes(messageJson)),
+                        StreamName = streamName,
+                        PartitionKey = "default"
+                    });
         
-                Console.WriteLine($"Push status: {pushResponse.HttpStatusCode}");
+                    Console.WriteLine($"Push status: {pushResponse.HttpStatusCode}");   
+                }
             }
         }
     }
 }
-
-record KinesisDataMessage(string Message, string TraceId, string SpanId);

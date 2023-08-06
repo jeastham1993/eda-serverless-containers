@@ -3,9 +3,13 @@ using Amazon.Kinesis.Model;
 /// <summary>
 ///     A custom class is required for the <see cref="Record" /> input from the Kinesis event.
 /// </summary>
-public class KinesisDataRecord : Record
+public class KinesisDataRecord<T>
 {
-    public new string Data { get; set; }
+    public string SequenceNumber { get; set; }
+    
+    public string EventID { get; set; }
+    
+    public T Data { get; set; }
 
-    public new decimal ApproximateArrivalTimestamp { get; set; }
+    public string PartitionKey { get; set; }
 }

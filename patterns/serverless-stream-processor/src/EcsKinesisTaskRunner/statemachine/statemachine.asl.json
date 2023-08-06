@@ -49,13 +49,15 @@
       "Catch": [
         {
           "ErrorEquals": [
-            "ProcessingException"
+            "ProcessingException",
+            "States.Timeout"
           ],
           "Next": "Handle Failure"
         }
       ],
       "ResultPath": "$.processingResult",
-      "End": true
+      "End": true,
+      "TimeoutSeconds": 30
     },
     "Handle Failure": {
       "Type": "Pass",

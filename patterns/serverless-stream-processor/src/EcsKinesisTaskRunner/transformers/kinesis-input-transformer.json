@@ -1,0 +1,6 @@
+{
+  "partitionKey": <$.partitionKey>,
+  "sequenceNumber": <$.sequenceNumber>,
+  "data": <$.data>,
+  "eventID": <$.eventID>
+}
