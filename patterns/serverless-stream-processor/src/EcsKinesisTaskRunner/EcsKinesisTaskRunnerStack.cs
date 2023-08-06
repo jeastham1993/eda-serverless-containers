@@ -137,7 +137,8 @@ public class EcsKinesisTaskRunnerStack : Stack
                     KinesisStreamParameters = new CfnPipe.PipeSourceKinesisStreamParametersProperty
                     {
                         StartingPosition = "LATEST",
-                        BatchSize = 1,
+                        BatchSize = 3,
+                        MaximumBatchingWindowInSeconds = 10
                     }
                 },
                 Target = workflow.StateMachineArn,

@@ -15,13 +15,4 @@ public static class ActivitySourceExtensions
             ActivityKind.Consumer, default(ActivityContext),
             links: new ActivityLink[1]{new ActivityLink(linkedContext)});
     }
-    internal static Activity? StartActivityWithContext(this ActivitySource source, Metadata messageMetadata)
-    {
-        var linkedContext = new ActivityContext(
-            ActivityTraceId.CreateFromString(messageMetadata.TraceId),
-            ActivitySpanId.CreateFromString(messageMetadata.SpanId),
-            ActivityTraceFlags.None);
-
-        return source.StartActivity(ActivityKind.Internal, parentContext: linkedContext, name: "Process message");
-    }
 }

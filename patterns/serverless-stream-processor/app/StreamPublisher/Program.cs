@@ -59,7 +59,6 @@ static async Task PublishMessage(string apiKey, string message, string streamNam
 
     using var tracerProvider = Sdk.CreateTracerProviderBuilder()
         .AddSource(applicationName)
-        .AddConsoleExporter()
         .AddHoneycomb(options)
         .Build();
 

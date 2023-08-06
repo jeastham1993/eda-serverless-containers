@@ -1,70 +1,92 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
+using Amazon.SimpleSystemsManagement;
+using Amazon.SimpleSystemsManagement.Model;
 using Amazon.StepFunctions;
 using Amazon.StepFunctions.Model;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Honeycomb.OpenTelemetry;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Processor;
 
-await Startup.Init();
+var applicationName = "com.StreamPublisher";
+        
+var ssmClient = new AmazonSimpleSystemsManagementClient();
 
-var stepFunctionsClient = Startup.Services.GetRequiredService<AmazonStepFunctionsClient>();
-var deserializer = Startup.Services.GetRequiredService<InputDeserializer>();
-var activitySource = Startup.Services.GetRequiredService<ActivitySource>();
-var traceProvider = Startup.Services.GetRequiredService<TracerProvider>();
-var logger = Startup.Services.GetRequiredService<ILogger>();
+var parameter = await ssmClient.GetParameterAsync(new GetParameterRequest()
+{
+    Name = "honeycomb-api-key"
+});
+
+ActivitySource activitySource = new(applicationName);
+
+var options = new HoneycombOptions
+{
+    ServiceName = "processor",
+    ServiceVersion = "1.0.0",
+    ApiKey = parameter.Parameter.Value,
+    ResourceBuilder = ResourceBuilder.CreateDefault()
+};
+
+using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .AddSource(applicationName)
+    .AddConsoleExporter()
+    .AddHoneycomb(options)
+    .Build();
+
+var stepFunctionsClient = new AmazonStepFunctionsClient();
+var deserializer = new InputDeserializer(activitySource);
 
 try
 {
-    logger.LogInformation("Processing messages");
+    Console.WriteLine("Processing messages");
     
     var kinesisMessages = deserializer.DeserializeFromEnvironment();
 
-    logger.LogInformation($"Found {kinesisMessages.Count} message(s) to process");
-
-    using var activity = activitySource.StartActivity("Consuming messages");
-
-    activity.AddTag("messages.count", kinesisMessages.Count);
-
-    foreach (var message in kinesisMessages)
+    using (var instanceActivity = activitySource.StartActivity("Processing messages"))
     {
-        try
+        instanceActivity?.AddTag("messages.count", kinesisMessages.Count);
+        
+        Console.WriteLine($"Found {kinesisMessages.Count} message(s) to process");
+
+        foreach (var message in kinesisMessages)
         {
-            logger.LogInformation($"Processing {message.SequenceNumber}");
-            
-            var context = message.Data.Metadata.LoadActivityContext();
-
-            using var messageActivity = activitySource.StartActivity("Consume message", ActivityKind.Consumer,
-                default(ActivityContext), links: new ActivityLink[1] { new ActivityLink(context) });
-            
-            Activity.Current.AddTag("stream.partition", message.PartitionKey);
-            Activity.Current.AddTag("stream.sequencenumber", message.SequenceNumber);
-            
-            await Task.Delay(TimeSpan.FromSeconds(5));
-
-            if (message.Data.Data.FirstName == "force-failure")
+            try
             {
-                throw new Exception("Failure processing message");
+                Console.WriteLine($"Processing {message.SequenceNumber}");
+
+                using (var messageActivity = activitySource.StartActivityWithLink(message.Data.Metadata))
+                {
+                    messageActivity?.AddTag("stream.partition", message.PartitionKey);
+                    messageActivity?.AddTag("stream.sequencenumber", message.SequenceNumber);
+
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+
+                    if (message.Data.Data.FirstName == "force-failure")
+                    {
+                        throw new Exception("Failure processing message");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Failure - {e.Message}");
+                Activity.Current.RecordException(e);
+                throw;
             }
         }
-        catch (Exception e)
-        {
-            logger.LogError("Failure", e);
-            Activity.Current.RecordException(e);
-            throw;
-        }
-    }
 
-    await stepFunctionsClient.SendTaskSuccessAsync(new SendTaskSuccessRequest()
-    {
-        Output = JsonSerializer.Serialize(new ProcessingResult(true, "OK")),
-        TaskToken = Environment.GetEnvironmentVariable("TASK_TOKEN")
-    });
+        await stepFunctionsClient.SendTaskSuccessAsync(new SendTaskSuccessRequest()
+        {
+            Output = JsonSerializer.Serialize(new ProcessingResult(true, "OK")),
+            TaskToken = Environment.GetEnvironmentVariable("TASK_TOKEN")
+        });
+    }
 }
 catch (Exception ex)
 {
-    logger.LogError("Catastrophic failure", ex);
+    Console.WriteLine($"Catastrophic failure - {ex.Message}");
     
     await stepFunctionsClient.SendTaskFailureAsync(new SendTaskFailureRequest()
     {
