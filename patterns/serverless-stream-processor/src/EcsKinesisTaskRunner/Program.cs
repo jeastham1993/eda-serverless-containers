@@ -7,9 +7,12 @@ namespace EcsKinesisTaskRunner
         public static void Main(string[] args)
         {
             var app = new App();
-            new EcsKinesisTaskRunnerStack(app, "EcsKinesisTaskRunner", new StackProps
-            {
-            });
+
+            var publisherStack = new PublisherStack(
+                app,
+                "PublisherStack");
+            
+            new ProcessorStack(app, "EcsKinesisTaskRunner", new ProcessorStackProps(publisherStack.DataStream));
             app.Synth();
         }
     }

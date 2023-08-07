@@ -12,11 +12,16 @@ using Constructs;
 using AssetOptions = Amazon.CDK.AWS.S3.Assets.AssetOptions;
 using Stream = Amazon.CDK.AWS.Kinesis.Stream;
 
+
 namespace EcsKinesisTaskRunner;
 
-public class EcsKinesisTaskRunnerStack : Stack
+using Amazon.CDK.AWS.SQS;
+
+public record ProcessorStackProps(Stream DataStream);
+
+public class ProcessorStack : Stack
 {
-    internal EcsKinesisTaskRunnerStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
+    internal ProcessorStack(Construct scope, string id, ProcessorStackProps processorProps, IStackProps props = null) : base(scope, id, props)
     {
         var vpc = new Vpc(this, "ecs-kinesis-cluster-network", new VpcProps
         {
@@ -62,18 +67,11 @@ public class EcsKinesisTaskRunnerStack : Stack
 
         taskDef.GrantRun(workflow);
 
-        BuildWorkflowSource(workflow, taskDef, vpc, applicationSecurityGroup, cluster);
+        BuildWorkflowSource(workflow, processorProps.DataStream);
     }
-
-    private void BuildWorkflowSource(StateMachine workflow, TaskDefinition taskDef, Vpc vpc,
-        SecurityGroup securityGroup, Cluster cluster)
+    
+    private void BuildWorkflowSource(StateMachine workflow, Stream dataStream)
     {
-        var dataStream = new Stream(this, "MessageStream", new StreamProps
-        {
-            StreamMode = StreamMode.ON_DEMAND,
-            RetentionPeriod = Duration.Days(1)
-        });
-
         var sourcePolicy = new PolicyDocument(
             new PolicyDocumentProps
             {
@@ -155,6 +153,8 @@ public class EcsKinesisTaskRunnerStack : Stack
 
     private StateMachine BuildWorkflow(Cluster cluster, SecurityGroup securityGroup, TaskDefinition taskDef)
     {
+        var failedMessageQueue = new Queue(this, "FailedMessageQueue", new QueueProps());
+        
         var logGroup = new LogGroup(this, "WorkflowLogGroup", new LogGroupProps
         {
             Retention = RetentionDays.ONE_DAY,
@@ -172,7 +172,8 @@ public class EcsKinesisTaskRunnerStack : Stack
                 { "SUBNET_2", cluster.Vpc.PublicSubnets[0].SubnetId },
                 { "SECURITY_GROUP_ID", securityGroup.SecurityGroupId },
                 { "CLUSTER_NAME", cluster.ClusterName },
-                { "TASK_DEFINITION", taskDef.TaskDefinitionArn }
+                { "TASK_DEFINITION", taskDef.TaskDefinitionArn },
+                { "QUEUE_URL", failedMessageQueue.QueueUrl },
             },
             StateMachineType = StateMachineType.STANDARD,
             TracingEnabled = true,
@@ -183,6 +184,9 @@ public class EcsKinesisTaskRunnerStack : Stack
                 Level = LogLevel.ALL
             }
         });
+
+        failedMessageQueue.GrantSendMessages(workflow);
+        
         return workflow;
     }
 
@@ -251,7 +255,7 @@ public class EcsKinesisTaskRunnerStack : Stack
             Family = "dotnet-poller-task-definition",
             RuntimePlatform = new RuntimePlatform
             {
-                CpuArchitecture = CpuArchitecture.ARM64,
+                CpuArchitecture = CpuArchitecture.X86_64,
                 OperatingSystemFamily = OperatingSystemFamily.LINUX
             },
             NetworkMode = NetworkMode.AWS_VPC,

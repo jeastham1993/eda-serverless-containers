@@ -1,4 +1,4 @@
-namespace StreamPublisher;
+namespace CreateCustomerHandler;
 
 public class CustomerCreatedEvent
 {

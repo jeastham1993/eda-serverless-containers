@@ -1,6 +1,6 @@
-﻿using System.Diagnostics;
+﻿namespace CreateCustomerHandler;
 
-namespace StreamPublisher;
+using System.Diagnostics;
 
 public class MessageWrapper<T>
 {

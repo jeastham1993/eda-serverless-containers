@@ -52,15 +52,20 @@
             "ProcessingException",
             "States.Timeout"
           ],
-          "Next": "Handle Failure"
+          "Next": "SQS SendMessage"
         }
       ],
       "ResultPath": "$.processingResult",
       "End": true,
       "TimeoutSeconds": 300
     },
-    "Handle Failure": {
-      "Type": "Pass",
+    "SQS SendMessage": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage",
+      "Parameters": {
+        "MessageBody.$": "$",
+        "QueueUrl": "${QUEUE_URL}"
+      },
       "Next": "Fail"
     },
     "Fail": {
