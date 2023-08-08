@@ -10,6 +10,21 @@ This pattern demonstrates how you can run a container based applications on Amaz
 
 Messages are pulled from the queue using Amazon EventBridge Pipes, and a AWS Step Functions workflow triggers a task running on ECS.
 
+## Serverless Stream Processing
+
+![](./assets/serverless-streams.png)
+
+This pattern demonstrates how you can run a container based applications on Amazon Elastic Container Service (ECS) with AWS Fargate. The container will only run when there are records available in the Kinesis data stream. This architecture could equally be replaced with Amazon Managed Streaming for Kafka (MSK) or self hosted Kafka.
+
+Messages are pulled from the queue using Amazon EventBridge Pipes, and a AWS Step Functions workflow triggers a task running on ECS. The workflow stores the incoming payload in Amazon S3 to allow for larger payloads, and on failure will store the request in an SQS queue for later processing.
+
+### Deployment
+
+```
+cd ./patterns/serverless-stream-processor
+cdk deploy --all
+```
+
 ## Event Driven Internal API's
 
 ![](./assets/event-driven-api.png)
