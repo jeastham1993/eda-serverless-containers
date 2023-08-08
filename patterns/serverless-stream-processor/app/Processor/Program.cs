@@ -1,5 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
+using Amazon.S3;
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
 using Amazon.StepFunctions;
@@ -36,13 +39,15 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .Build();
 
 var stepFunctionsClient = new AmazonStepFunctionsClient();
-var deserializer = new InputDeserializer(activitySource);
+var s3Client = new AmazonS3Client();
+var dynamoClient = new AmazonDynamoDBClient();
+var deserializer = new InputDeserializer(activitySource, s3Client);
 
 try
 {
     Console.WriteLine("Processing messages");
     
-    var kinesisMessages = deserializer.DeserializeFromEnvironment();
+    var kinesisMessages = await deserializer.DeserializeFromInput();
 
     using (var instanceActivity = activitySource.StartActivity("Processing messages"))
     {
@@ -67,6 +72,13 @@ try
                     {
                         throw new Exception("Failure processing message");
                     }
+
+                    await dynamoClient.PutItemAsync(Environment.GetEnvironmentVariable("TABLE_NAME"),
+                        new Dictionary<string, AttributeValue>()
+                        {
+                            { "PK", new AttributeValue(message.Data.Data.CustomerId) },
+                            { "FirstName", new AttributeValue(message.Data.Data.FirstName) }
+                        });
                 }
             }
             catch (Exception e)

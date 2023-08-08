@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.IO;
 using Amazon.CDK;
+using Amazon.CDK.AWS.DynamoDB;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.ECS;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Kinesis;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.Pipes;
+using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.StepFunctions;
 using Constructs;
 using AssetOptions = Amazon.CDK.AWS.S3.Assets.AssetOptions;
@@ -60,10 +62,26 @@ public class ProcessorStack : Stack
             ContainerInsights = true,
             Vpc = vpc
         });
+        
+        var bucket = new Bucket(this, "RecordStorageBucket", new BucketProps()
+        {
+            BucketName = $"{this.Account}-temporary-storage-bucket"
+        });
 
-        var taskDef = BuildEcsTaskDefinition();
+        var storageOutput = new Table(this, "StorageTable", new TableProps()
+        {
+            PartitionKey = new Attribute()
+            {
+                Name = "PK",
+                Type = AttributeType.STRING
+            },
+            RemovalPolicy = RemovalPolicy.DESTROY,
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+        });
 
-        var workflow = BuildWorkflow(cluster, applicationSecurityGroup, taskDef);
+        var taskDef = BuildEcsTaskDefinition(bucket, storageOutput);
+
+        var workflow = BuildWorkflow(cluster, applicationSecurityGroup, taskDef, bucket);
 
         taskDef.GrantRun(workflow);
 
@@ -151,7 +169,7 @@ public class ProcessorStack : Stack
             });
     }
 
-    private StateMachine BuildWorkflow(Cluster cluster, SecurityGroup securityGroup, TaskDefinition taskDef)
+    private StateMachine BuildWorkflow(Cluster cluster, SecurityGroup securityGroup, TaskDefinition taskDef, Bucket bucket)
     {
         var failedMessageQueue = new Queue(this, "FailedMessageQueue", new QueueProps());
         
@@ -174,6 +192,7 @@ public class ProcessorStack : Stack
                 { "CLUSTER_NAME", cluster.ClusterName },
                 { "TASK_DEFINITION", taskDef.TaskDefinitionArn },
                 { "QUEUE_URL", failedMessageQueue.QueueUrl },
+                { "BUCKET_NAME", bucket.BucketName },
             },
             StateMachineType = StateMachineType.STANDARD,
             TracingEnabled = true,
@@ -185,12 +204,13 @@ public class ProcessorStack : Stack
             }
         });
 
+        bucket.GrantWrite(workflow);
         failedMessageQueue.GrantSendMessages(workflow);
         
         return workflow;
     }
 
-    private TaskDefinition BuildEcsTaskDefinition()
+    private TaskDefinition BuildEcsTaskDefinition(Bucket bucket, Table output)
     {
         var passRolePolicy = new Policy(this, "iam-pass-role", new PolicyProps
         {
@@ -249,13 +269,15 @@ public class ProcessorStack : Stack
 
         taskRole.AttachInlinePolicy(passRolePolicy);
         taskRole.AttachInlinePolicy(ssmReadOnly);
+        bucket.GrantRead(taskRole);
+        output.GrantWriteData(taskRole);
 
         var taskDef = new TaskDefinition(this, "task-def", new TaskDefinitionProps
         {
             Family = "dotnet-poller-task-definition",
             RuntimePlatform = new RuntimePlatform
             {
-                CpuArchitecture = CpuArchitecture.X86_64,
+                CpuArchitecture = CpuArchitecture.ARM64,
                 OperatingSystemFamily = OperatingSystemFamily.LINUX
             },
             NetworkMode = NetworkMode.AWS_VPC,
@@ -281,7 +303,12 @@ public class ProcessorStack : Stack
             {
                 LogGroup = logGroup,
                 StreamPrefix = "Processor"
-            })
+            }),
+            Environment = new Dictionary<string, string>(2)
+            {
+                {"BUCKET_NAME", bucket.BucketName},
+                {"TABLE_NAME", output.TableName}
+            }
         });
         return taskDef;
     }

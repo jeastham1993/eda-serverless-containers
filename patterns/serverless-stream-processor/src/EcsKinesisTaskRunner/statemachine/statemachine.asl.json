@@ -1,13 +1,25 @@
 {
   "Comment": "A description of my state machine",
-  "StartAt": "Generate Stringified Payload",
+  "StartAt": "Generate Unique Identifier",
   "States": {
-    "Generate Stringified Payload": {
+    "Generate Unique Identifier": {
       "Type": "Pass",
+      "Next": "PutObject",
+      "Parameters": {
+        "UniqueIdentifier.$": "States.UUID()",
+        "Input.$": "$"
+      }
+    },
+    "PutObject": {
+      "Type": "Task",
       "Next": "ECS RunTask",
       "Parameters": {
-        "Data.$": "States.JsonToString($)"
-      }
+        "Body.$": "$.Input",
+        "Bucket": "${BUCKET_NAME}",
+        "Key.$": "$.UniqueIdentifier"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+      "ResultPath": null
     },
     "ECS RunTask": {
       "Type": "Task",
@@ -34,8 +46,8 @@
               "Name": "SampleContainer",
               "Environment": [
                 {
-                  "Name": "INPUT_MESSAGE",
-                  "Value.$": "$.Data"
+                  "Name": "BUCKET_KEY",
+                  "Value.$": "$.UniqueIdentifier"
                 },
                 {
                   "Name": "TASK_TOKEN",
@@ -52,12 +64,22 @@
             "ProcessingException",
             "States.Timeout"
           ],
-          "Next": "SQS SendMessage"
+          "Next": "SQS SendMessage",
+          "ResultPath": null
         }
       ],
-      "ResultPath": "$.processingResult",
-      "End": true,
+      "ResultPath": null,
+      "Next": "DeleteObjectOnSuccess",
       "TimeoutSeconds": 300
+    },
+    "DeleteObjectOnSuccess": {
+      "Type": "Task",
+      "Parameters": {
+        "Bucket": "${BUCKET_NAME}",
+        "Key.$": "$.UniqueIdentifier"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:deleteObject",
+      "End": true
     },
     "SQS SendMessage": {
       "Type": "Task",
@@ -66,7 +88,16 @@
         "MessageBody.$": "$",
         "QueueUrl": "${QUEUE_URL}"
       },
-      "Next": "Fail"
+      "Next": "DeleteObjectOnFailure"
+    },
+    "DeleteObjectOnFailure": {
+      "Type": "Task",
+      "Next": "Fail",
+      "Parameters": {
+        "Bucket": "${BUCKET_NAME}",
+        "Key.$": "$.UniqueIdentifier"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:s3:deleteObject"
     },
     "Fail": {
       "Type": "Fail"

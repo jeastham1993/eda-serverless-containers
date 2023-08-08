@@ -39,7 +39,7 @@ public class PublisherStack : Stack
                 "-c",
                 " dotnet tool install -g Amazon.Lambda.Tools"+
                 " && dotnet build"+
-                " && dotnet lambda package --output-package /asset-output/function.zip"
+                " && dotnet lambda package --output-package /asset-output/function.zip -farch arm64"
             }
         };
         
@@ -86,11 +86,11 @@ public class PublisherStack : Stack
                 },
                 Role = functionRole,
                 Tracing = Tracing.ACTIVE,
-                Code = Code.FromAsset(".\\app\\CreateCustomerHandler\\", new Amazon.CDK.AWS.S3.Assets.AssetOptions
+                Code = Code.FromAsset("./app/CreateCustomerHandler/", new Amazon.CDK.AWS.S3.Assets.AssetOptions
                 {
                     Bundling = buildOption
                 }),
-                Architecture = Architecture.X86_64
+                Architecture = Architecture.ARM_64
             });
         
         var api = new RestApi(
