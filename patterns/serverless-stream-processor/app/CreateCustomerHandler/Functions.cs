@@ -38,26 +38,35 @@ public class Functions
     {
         publisherActivitySource = new(ApplicationName);
         
-        var ssmClient = new AmazonSimpleSystemsManagementClient();
+        var traceBuilder = Sdk.CreateTracerProviderBuilder()
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService((ApplicationName)))
+            .AddSource(ApplicationName)
+            .AddConsoleExporter();
 
-        var parameter = ssmClient.GetParameterAsync(
-            new GetParameterRequest()
+        try
+        {
+            var ssmClient = new AmazonSimpleSystemsManagementClient();
+            
+            var parameter = ssmClient.GetParameterAsync(new GetParameterRequest()
             {
                 Name = "honeycomb-api-key"
             }).GetAwaiter().GetResult();
-        
-        var options = new HoneycombOptions
-        {
-            ServiceName = "publisher",
-            ServiceVersion = "1.0.0",
-            ApiKey = parameter.Parameter.Value,
-            ResourceBuilder = ResourceBuilder.CreateDefault()
-        };
 
-        this.tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService((ApplicationName)))
-            .AddSource(ApplicationName)
-            .AddHoneycomb(options)
+            var options = new HoneycombOptions
+            {
+                ServiceName = "processor",
+                ServiceVersion = "1.0.0",
+                ApiKey = parameter.Parameter.Value,
+                ResourceBuilder = ResourceBuilder.CreateDefault()
+            };
+
+            traceBuilder.AddHoneycomb(options);
+        }
+        catch (Exception)
+        {
+        }
+
+        this.tracerProvider = traceBuilder
             .Build();
         
         client = new AmazonKinesisClient();

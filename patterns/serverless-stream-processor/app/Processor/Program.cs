@@ -17,25 +17,34 @@ var applicationName = "com.StreamPublisher";
         
 var ssmClient = new AmazonSimpleSystemsManagementClient();
 
-var parameter = await ssmClient.GetParameterAsync(new GetParameterRequest()
+var traceBuilder = Sdk.CreateTracerProviderBuilder()
+    .AddSource(applicationName)
+    .AddConsoleExporter();
+
+try
 {
-    Name = "honeycomb-api-key"
-});
+    var parameter = await ssmClient.GetParameterAsync(new GetParameterRequest()
+    {
+        Name = "honeycomb-api-key"
+    });
+
+    var options = new HoneycombOptions
+    {
+        ServiceName = "processor",
+        ServiceVersion = "1.0.0",
+        ApiKey = parameter.Parameter.Value,
+        ResourceBuilder = ResourceBuilder.CreateDefault()
+    };
+
+    traceBuilder.AddHoneycomb(options);
+}
+catch (Exception)
+{
+}
 
 ActivitySource activitySource = new(applicationName);
 
-var options = new HoneycombOptions
-{
-    ServiceName = "processor",
-    ServiceVersion = "1.0.0",
-    ApiKey = parameter.Parameter.Value,
-    ResourceBuilder = ResourceBuilder.CreateDefault()
-};
-
-using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-    .AddSource(applicationName)
-    .AddConsoleExporter()
-    .AddHoneycomb(options)
+using var tracerProvider = traceBuilder
     .Build();
 
 var stepFunctionsClient = new AmazonStepFunctionsClient();
