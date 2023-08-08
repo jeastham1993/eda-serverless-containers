@@ -18,6 +18,8 @@ This pattern demonstrates how you can run a container based applications on Amaz
 
 Messages are pulled from the queue using Amazon EventBridge Pipes, and a AWS Step Functions workflow triggers a task running on ECS. The workflow stores the incoming payload in Amazon S3 to allow for larger payloads, and on failure will store the request in an SQS queue for later processing.
 
+This pattern also supports exporting trace data to [Honeycomb](https://honeycomb.io). To enable Honeycomb support, create an SSM parameter named `honeycomb-api-key`.
+
 ### Deployment
 
 ```
